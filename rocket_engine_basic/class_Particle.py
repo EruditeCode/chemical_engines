@@ -6,9 +6,10 @@ class Particle:
 		self.pos = np.array((pos[0], pos[1]))
 		self.vel = np.array((vel[0], vel[1]))
 		self.rad = rad
+		self.movement_ratio = 1.0
 
 	def update_interactions(self, walls, atoms=None):
-		self.boundary_collision(walls)
+		#self.boundary_collision(walls)
 		
 		# Can alter this logic to be first
 		# checking if same atom then checking if in local area...
@@ -23,6 +24,7 @@ class Particle:
 						#Make sure each particle is outside the other...
 						self.separate_atom_to_edge(atom)
 						self.elastic_collision(self, atom)
+		self.boundary_collision(walls)
 		return atoms
 
 	def elastic_collision(self, atom_1, atom_2):
@@ -65,4 +67,5 @@ class Particle:
 		return math.dist(self.pos, particle.pos) <= self.rad + particle.rad
 
 	def update_pos(self, dt):
-		self.pos = self.pos + self.vel * dt
+		self.pos = self.pos + self.vel*self.movement_ratio*dt
+		self.movement_ratio = 1.0
