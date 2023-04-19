@@ -9,18 +9,11 @@ import numpy as np
 from random import randint
 from basic_1_boundary import barriers_open, barriers_closed
 from class_Particle import Particle
+from support_functions import barriers_to_walls, get_overlap_groups
 
 # Reorganise the boundary data as walls.
-walls_closed = []
-for barrier in barriers_closed:
-	for i in range(len(barrier)):
-		walls_closed.append([barrier[i-1], barrier[i]])
-
-walls_open = []
-for barrier in barriers_open:
-	for i in range(len(barrier)):
-		walls_open.append([barrier[i-1], barrier[i]])
-
+walls_closed = barriers_to_walls(barriers_closed)
+walls_open = barriers_to_walls(barriers_open)
 
 def main():
 	pg.init()
@@ -34,46 +27,43 @@ def main():
 	bg_closed = pg.image.load('basic_1_closed.png')
 	bg_closed = pg.transform.scale(bg_closed, (WIDTH, HEIGHT))
 
-	spawn_point = (152, 413)
-	particles = [Particle(spawn_point, (0.7,-0.8), 1)]
+	particles = []
 
-	simulate = False
-	pulse = False
-	valve = True
-	count = 0	
+	# Flags and Settings
+	dt = 0.5
+	simulate, pulse, valve = False, False, True
+	pulse_count = 0	
 	while True:
 		for event in pg.event.get():
 			if event.type == pg.QUIT:
 				pg.quit()
 				exit()
 			if event.type == pg.MOUSEBUTTONUP:
-				#print(pg.mouse.get_pos())
 				if event.button == 1:
 					simulate = not simulate
 				if event.button == 3:
-					# vx = np.random.uniform(0.5, 0.9)
-					# vy = np.random.uniform(-1.0, -0.8)
-					# x, y = 152, randint(405, 425)
-					# particles.append(Particle((x, y), (vx,vy), 1))
 					pulse = not pulse
 			if event.type == pg.KEYUP:
 				if event.key == pg.K_v:
 					valve = not valve 
 
 		if pulse:
-			if count % 2 == 0:
+			if pulse_count % 2 == 0:
 				vx = np.random.uniform(0.5, 0.9)
 				vy = np.random.uniform(-1.0, -0.8)
 				x, y = 152, randint(405, 425)
 				particles.append(Particle((x, y), (vx,vy), 1))
-			count += 1
+			pulse_count += 1
 
-			if count == 100:
+			if pulse_count == 100:
 				pulse = False
-				count = 0
+				pulse_count = 0
 
 		if simulate:
 			walls = walls_open if valve else walls_closed
+			# IMPROVE COLLISION METHOD
+			# IMPROVE COLLISION EFFICIENCY
+			# IMPROVE COLLISION BOUNDARY EFFICIENCY
 			# Update particles in the engine.
 			# Take all particles and order them by the x-axis
 			particles.sort(key=lambda x: x.pos[0], reverse=False)
@@ -87,13 +77,14 @@ def main():
 						available_atoms = available_atoms[0].update_interactions(walls, available_atoms)
 
 			for atom in particles:
-				atom.update_pos(1.0)
+				atom.update_pos(dt)
 
 			for i in range(len(particles)-1, -1, -1):
 				if particles[i].pos[0] > 756:
 					particles.pop(i)
 				elif (particles[i].pos[1] > 500 or particles[i].pos[1] < 100):
 					particles.pop(i)
+					print("OOPS")
 
 		# Displaying the engine.
 		if valve:
@@ -105,6 +96,7 @@ def main():
 		for particle in particles:
 			pg.draw.circle(screen, (240,240,20), particle.pos, particle.rad)
 
+		# Calculating values for text section.
 		number_in_injector = 0
 		number_in_chamber = 0
 		number_in_exhaust = 0
@@ -134,19 +126,7 @@ def main():
 		draw_text(screen, font_name, f"{number_in_exhaust:0>3}", 20, 620, 500, (240,240,20))	
 
 		pg.display.update()
-		clock.tick(30)
-
-def get_overlap_groups(particles):
-	groups = []
-	group = [particles[0]] 
-	for i in range(1, len(particles)):
-		if particles[i].pos[0] < group[0].pos[0]+2:
-			group.append(particles[i])
-		else:
-			groups.append(group.copy())
-			group = [particles[i]]
-	groups.append(group)
-	return groups
+		clock.tick(60)
 
 def draw_text(screen, font_name, text, size, x, y, color):
 	font = pg.font.Font(font_name, size)
