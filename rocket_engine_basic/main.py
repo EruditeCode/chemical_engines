@@ -10,8 +10,6 @@ from random import randint
 from basic_1_boundary import barriers_open, barriers_closed
 from class_Particle import Particle
 from support_functions import barriers_to_walls, sweep_and_prune
-from collections import deque
-from statistics import mean
 
 # Reorganise the boundary data as walls.
 walls_closed = barriers_to_walls(barriers_closed)
@@ -145,7 +143,6 @@ def main():
 		
 		draw_text(screen, font_name, "Exhaust", 20, 620, 470, (255,255,255))
 		draw_text(screen, font_name, f"Momentum: {int(momentum):0>5}", 20, 620, 500, (255,255,255))
-		draw_text(screen, font_name, f"{number_in_exhaust:0>3}", 20, 620, 530, (240,240,20))
 	
 
 		pg.display.set_caption(str(clock.get_fps()))
