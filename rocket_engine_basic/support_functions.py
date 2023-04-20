@@ -3,8 +3,8 @@ import numpy as np
 def barriers_to_walls(barriers):
 	walls = []
 	for barrier in barriers:
-		for i in range(len(barrier)):
-			walls.append([barrier[i-1], barrier[i]])
+		for i in range(len(barrier)-1,-1,-1):
+			walls.append([barrier[i], barrier[i-1]])
 	return walls
 
 def get_overlap_groups(particles, axis=0):
