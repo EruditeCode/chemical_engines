@@ -13,6 +13,7 @@ class Particle:
 		self.vel = np.array((vel[0], vel[1]))
 		self.rad = rad
 		self.movement_ratio = 1.0
+		self.color = (240,240,40)
 
 	def update_particle_collision(self, particles):
 		for i in range(len(particles)-1, -1, -1):
@@ -98,3 +99,82 @@ class Particle:
 		# 		new_velocity = -2*np.dot(self.vel, wall_unit_normal)*wall_unit_normal + self.vel
 		# 		self.vel = new_velocity
 
+class Fuel(Particle):
+	def __init__(self, pos, vel, rad):
+		super().__init__(pos, vel, rad)
+		self.type = "fuel"
+		self.color = (255,255,20)
+		self.reacted = False
+
+	def update_particle_collision(self, particles):
+		products, deletion = [], []
+		if not self.reacted:
+			for i in range(len(particles)-1, -1, -1):
+				particle = particles[i]
+				if particle == self:
+					particles.pop(i)
+				elif particle.type == "oxidizer":
+					deletion.append(self)
+					deletion.append(particle)
+					self.reacted = True
+					particle.reacted = True
+					vx = np.random.uniform(0.5, 0.9)*5
+					vy = np.random.uniform(-1.0, -0.8)*5
+					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), 2))
+				else:
+					self.separate_atom_to_edge(particle)
+					self.elastic_collision(self, particle)
+		else:
+			for i in range(len(particles)-1, -1, -1):
+				particle = particles[i]
+				if particle == self:
+					particles.pop(i)
+		return particles, products, deletion
+
+class Ox(Particle):
+	def __init__(self, pos, vel, rad):
+		super().__init__(pos, vel, rad)
+		self.type = "oxidizer"
+		self.color = (180,180,240)
+		self.reacted = False
+
+	def update_particle_collision(self, particles):
+		products, deletion = [], []
+		if not self.reacted:
+			for i in range(len(particles)-1, -1, -1):
+				particle = particles[i]
+				if particle == self:
+					particles.pop(i)
+				elif particle.type == "fuel":
+					deletion.append(self)
+					deletion.append(particle)
+					self.reacted = True
+					particle.reacted = True
+					vx = np.random.uniform(0.5, 0.9)*5
+					vy = np.random.uniform(-1.0, -0.8)*5
+					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), 2))
+				else:
+					self.separate_atom_to_edge(particle)
+					self.elastic_collision(self, particle)
+		else:
+			for i in range(len(particles)-1, -1, -1):
+				particle = particles[i]
+				if particle == self:
+					particles.pop(i)
+		return particles, products, deletion
+
+class Product(Particle):
+	def __init__(self, pos, vel, rad):
+		super().__init__(pos, vel, rad)
+		self.type = "product"
+		self.color = (255,200,200)
+
+	def update_particle_collision(self, particles):
+		for i in range(len(particles)-1, -1, -1):
+			particle = particles[i]
+			if particle == self:
+				particles.pop(i)
+			else:
+				self.separate_atom_to_edge(particle)
+				self.elastic_collision(self, particle)
+		return particles, [], []
