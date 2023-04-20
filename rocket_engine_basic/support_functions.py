@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def barriers_to_walls(barriers):
 	walls = []
@@ -7,14 +7,28 @@ def barriers_to_walls(barriers):
 			walls.append([barrier[i-1], barrier[i]])
 	return walls
 
-def get_overlap_groups(particles):
+def get_overlap_groups(particles, axis=0):
 	groups = []
 	group = [particles[0]] 
 	for i in range(1, len(particles)):
-		if particles[i].pos[0] < group[0].pos[0]+2:
+		if particles[i].pos[axis] <= group[0].pos[axis]+group[0].rad+particles[i].rad:
 			group.append(particles[i])
 		else:
 			groups.append(group.copy())
 			group = [particles[i]]
 	groups.append(group)
 	return groups
+
+def sweep_and_prune(particles):
+	# Sort by x-axis.
+	x_sorted = get_overlap_groups(particles)
+	collision_groups = []
+	for group in x_sorted:
+		if len(group) > 1:
+			# Sort by y-axis
+			group.sort(key=lambda x: x.pos[1], reverse=False)
+			y_sorted = get_overlap_groups(group, 1)
+			for collision in y_sorted:
+				if len(collision) > 1:
+					collision_groups.append(collision)
+	return collision_groups
