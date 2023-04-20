@@ -30,9 +30,9 @@ def main():
 	bg_closed = pg.transform.scale(bg_closed, (WIDTH, HEIGHT))
 
 	particles = []
-	exhausting_particles = deque([])
+	momentum = 0
 
-	CHAMBER_TARGET = 250
+	CHAMBER_TARGET = 300
 
 	# Flags and Settings
 	dt = 0.5
@@ -63,7 +63,7 @@ def main():
 				particles.append(Particle((x, y), (vx,vy), 1))
 			pulse_count += 1
 
-			if pulse_count == 60:
+			if pulse_count == 80:
 				pulse = False
 				pulse_count = 0
 
@@ -93,6 +93,7 @@ def main():
 
 			for i in range(len(particles)-1, -1, -1):
 				if particles[i].pos[0] > 760:
+					momentum += particles[i].vel[0]*particles[i].rad
 					particles.pop(i)
 				elif (particles[i].pos[1] > 500 or particles[i].pos[1] < 100):
 					particles.pop(i)
@@ -117,15 +118,6 @@ def main():
 				number_in_injector += 1
 			elif 198 < particle.pos[0] <= 587:
 				number_in_chamber += 1
-			elif particle.pos[0] > 587:
-				number_in_exhaust += 1
-		if number_in_exhaust:
-			average_exhaust = True
-
-		if average_exhaust:
-			exhausting_particles.appendleft(number_in_exhaust)
-			if len(exhausting_particles) > 1200:
-				exhausting_particles.pop()
 
 		if number_in_chamber + number_in_injector <= CHAMBER_TARGET-30 and not pulse:
 			pulse = True
@@ -139,6 +131,7 @@ def main():
 		# Displaying information.
 		draw_text(screen, font_name, "Basic Rocket Engine", 40, 50, 50, (255,255,255))
 		draw_text(screen, font_name, f"Total Particles: {len(particles)}", 20, 50, 95, (240,240,20))
+		draw_text(screen, font_name, f"Chamber Target: {CHAMBER_TARGET}", 20, 50, 125, (240,240,20))
 		
 		draw_text(screen, font_name, "Injector", 20, 120, 470, (255,255,255))
 		if valve:
@@ -151,14 +144,13 @@ def main():
 		draw_text(screen, font_name, f"{number_in_chamber:0>3}", 20, 340, 500, (240,240,20))
 		
 		draw_text(screen, font_name, "Exhaust", 20, 620, 470, (255,255,255))
-		if exhausting_particles:
-			draw_text(screen, font_name, f"Avg: {int(mean(exhausting_particles)):0>3}", 20, 620, 500, (255,255,255))
+		draw_text(screen, font_name, f"Momentum: {int(momentum):0>5}", 20, 620, 500, (255,255,255))
 		draw_text(screen, font_name, f"{number_in_exhaust:0>3}", 20, 620, 530, (240,240,20))
 	
 
 		pg.display.set_caption(str(clock.get_fps()))
 		pg.display.update()
-		clock.tick(30)
+		clock.tick(20)
 
 def draw_text(screen, font_name, text, size, x, y, color):
 	font = pg.font.Font(font_name, size)
