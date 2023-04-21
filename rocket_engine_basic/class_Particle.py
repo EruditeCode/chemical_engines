@@ -44,11 +44,12 @@ class Particle:
 		atom_2.vel = u2
 
 	def separate_atom_to_edge(self, atom):
-		# This points from self to the atom...
-		ratio = ((atom.rad+self.rad)-(math.dist(atom.pos, self.pos))) / (atom.rad+self.rad)
-		vector = np.array(((atom.pos[0]-self.pos[0])/2, (atom.pos[1]-self.pos[1])/2))
-		atom.pos = atom.pos + vector*ratio
-		self.pos = self.pos + (-vector)*ratio
+		# If the particles overlap, they need to be separated by the overlap distance.
+		particle_dist = math.dist(atom.pos, self.pos)
+		overlap_distance = ((self.rad + atom.rad) - particle_dist)
+		unit_vector = np.array(((atom.pos[0]-self.pos[0])/particle_dist, (atom.pos[1]-self.pos[1])/particle_dist))
+		atom.pos = atom.pos + unit_vector*(overlap_distance/2)
+		self.pos = self.pos + -unit_vector*(overlap_distance/2)
 
 	def boundary_collision(self, wall, dt):
 		w = math.dist(wall[0], wall[1])
@@ -103,7 +104,7 @@ class Fuel(Particle):
 	def __init__(self, pos, vel, rad):
 		super().__init__(pos, vel, rad)
 		self.type = "fuel"
-		self.color = (255,255,20)
+		self.color = (240,240,80)
 		self.reacted = False
 
 	def update_particle_collision(self, particles):
@@ -113,15 +114,15 @@ class Fuel(Particle):
 				particle = particles[i]
 				if particle == self:
 					particles.pop(i)
-				elif particle.type == "oxidizer":
+				elif particle.type == "oxidizer" and self.check_collision(particle):
 					deletion.append(self)
 					deletion.append(particle)
 					self.reacted = True
 					particle.reacted = True
-					vx = np.random.uniform(0.5, 0.9)*5
-					vy = np.random.uniform(-1.0, -0.8)*5
-					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), 2))
-				else:
+					vx = np.random.uniform(0.5, 0.9)*5 + self.vel[0]
+					vy = np.random.uniform(-1.0, -0.8)*5 + self.vel[1]
+					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), self.rad+particle.rad))
+				elif self.check_collision(particle):
 					self.separate_atom_to_edge(particle)
 					self.elastic_collision(self, particle)
 		else:
@@ -130,6 +131,12 @@ class Fuel(Particle):
 				if particle == self:
 					particles.pop(i)
 		return particles, products, deletion
+
+	def check_collision(self, particle):
+		if math.dist(self.pos, particle.pos) <= self.rad + particle.rad:
+			return True
+		return False
+
 
 class Ox(Particle):
 	def __init__(self, pos, vel, rad):
@@ -150,9 +157,9 @@ class Ox(Particle):
 					deletion.append(particle)
 					self.reacted = True
 					particle.reacted = True
-					vx = np.random.uniform(0.5, 0.9)*5
-					vy = np.random.uniform(-1.0, -0.8)*5
-					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), 2))
+					vx = np.random.uniform(-1, 1)*5 + self.vel[0]
+					vy = np.random.uniform(-1, 1)*5 + self.vel[1]
+					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), self.rad+particle.rad))
 				else:
 					self.separate_atom_to_edge(particle)
 					self.elastic_collision(self, particle)
