@@ -1,11 +1,6 @@
 import math
 import numpy as np
-
-def ccw(A, B, C):
-	return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
-
-def intersect(A,B,C,D):
-	return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+from support_functions import get_unit_vector, get_vector_unit_normal, get_gradient_and_constant, intersect
 
 class Particle:
 	def __init__(self, pos, vel, rad):
@@ -20,17 +15,39 @@ class Particle:
 			particle = particles[i]
 			if particle == self:
 				particles.pop(i)
-			else:
+			elif self.check_collision(particle):
 				self.separate_atom_to_edge(particle)
 				self.elastic_collision(self, particle)
 		return particles
 
 	def update_wall_collision(self, wall, dt):
-		self.boundary_collision(wall, dt)
+		wall_length = math.dist(wall[0], wall[1])
+		A2 = abs((wall[0][0]*wall[1][1]) - (wall[0][1]*wall[1][0]) + (wall[1][0]*self.pos[1]) - (wall[1][1]*self.pos[0]) + (wall[0][1]*self.pos[0]) - (wall[0][0]*self.pos[1])) 
+		if (A2/wall_length) <= self.rad and self.in_wall_box(wall):
+			# First we consider an object that is already overlapping the wall.
+			self.update_pos_and_vel_using_wall(wall, A2/wall_length)
+		else:
+			# Second we consider an object with trajectory to overlap between frames.
+			next_pos = self.pos + (self.vel*dt + get_unit_vector(self.vel)*self.rad)
+			if intersect(wall[0], wall[1], self.pos, next_pos):
+				self.use_intersection_to_set_pos_and_vel(next_pos, wall_length, wall)
 
 	def update_pos(self, dt):
 		self.pos = self.pos + self.vel*self.movement_ratio*dt
 		self.movement_ratio = 1.0
+
+	def check_collision(self, particle):
+		if math.dist(self.pos, particle.pos) <= self.rad + particle.rad:
+			return True
+		return False
+
+	def separate_atom_to_edge(self, atom):
+		# If the particles overlap, they need to be separated by the overlap distance.
+		particle_dist = math.dist(atom.pos, self.pos)
+		overlap_distance = ((self.rad + atom.rad) - particle_dist)
+		unit_vector = np.array(((atom.pos[0]-self.pos[0])/particle_dist, (atom.pos[1]-self.pos[1])/particle_dist))
+		atom.pos = atom.pos + unit_vector*(overlap_distance/2)
+		self.pos = self.pos + -unit_vector*(overlap_distance/2)
 
 	def elastic_collision(self, atom_1, atom_2):
 		m1, m2 = atom_1.rad**2, atom_2.rad**2 
@@ -43,62 +60,58 @@ class Particle:
 		atom_1.vel = u1
 		atom_2.vel = u2
 
-	def separate_atom_to_edge(self, atom):
-		# If the particles overlap, they need to be separated by the overlap distance.
-		particle_dist = math.dist(atom.pos, self.pos)
-		overlap_distance = ((self.rad + atom.rad) - particle_dist)
-		unit_vector = np.array(((atom.pos[0]-self.pos[0])/particle_dist, (atom.pos[1]-self.pos[1])/particle_dist))
-		atom.pos = atom.pos + unit_vector*(overlap_distance/2)
-		self.pos = self.pos + -unit_vector*(overlap_distance/2)
+	def in_wall_box(self, wall):
+		x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
+		y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
+		if ((x_min-self.rad<=self.pos[0]<=x_max+self.rad) and (y_min-self.rad<=self.pos[1]<=y_max+self.rad)):
+			return True
+		return False
 
-	def boundary_collision(self, wall, dt):
-		w = math.dist(wall[0], wall[1])
-		A2 = abs((wall[0][0]*wall[1][1]) - (wall[0][1]*wall[1][0]) + (wall[1][0]*self.pos[1]) - (wall[1][1]*self.pos[0]) + (wall[0][1]*self.pos[0]) - (wall[0][0]*self.pos[1])) 
-		if (A2 / w) <= self.rad:
-			# Collision has already happened within this frame.
-			# Set the particle inside the wall.
-			wall_vector = (wall[1][0]-wall[0][0], wall[1][1]-wall[0][1])
-			wall_normal = (-wall_vector[1], wall_vector[0])
-			wall_normal_length = (wall_normal[0]**2 + wall_normal[1]**2)**0.5
-			wall_unit_normal = np.array((wall_normal[0]/wall_normal_length, wall_normal[1]/wall_normal_length))
-			self.pos = self.pos - (self.rad-(A2 / w))*wall_unit_normal
-			# Update the velocity of the particle.
-			new_velocity = -2*np.dot(self.vel, wall_unit_normal)*wall_unit_normal + self.vel
-			self.vel = new_velocity
-		# else:
-		# 	# THIS SECTION NEEDS SOME SERIOUS WORK!!!
-		# 	# Check if heading towards the wall, are we likely to miss the collision?
-		# 	temp_point = self.pos + self.vel*dt
-		# 	if intersect(wall[0], wall[1], self.pos, temp_point):
-		# 		print("INTERSECTION")
-		# 		# Equation for particle line (gradient - m1, constant - c1)
-		# 		if temp_point[1] != self.pos[1] and temp_point[0] != self.pos[0]:
-		# 			m1 = (temp_point[1]-self.pos[1])/(temp_point[0]-self.pos[0])
-		# 		else:
-		# 			m1 = 0
-		# 		c1 = self.pos[1] - (m1 * self.pos[0])
+	def update_pos_and_vel_using_wall(self, wall, change, point=None):
+		wall_unit_normal = get_vector_unit_normal((wall[1][0]-wall[0][0], wall[1][1]-wall[0][1]))
+		self.vel = -2*np.dot(self.vel, wall_unit_normal)*wall_unit_normal + self.vel
+		if point is not None:
+			self.pos = point
+		else:
+			self.pos = self.pos - (self.rad-change)*wall_unit_normal
 
-		# 		top = (self.rad*w) - (wall[0][0]*wall[1][1]) + (wall[0][1]*wall[1][0]) - (c1*wall[1][0]) + c1*wall[0][0]
-		# 		bottom = (wall[1][0]*m1) - wall[1][1] + wall[0][1] - (wall[0][0]*m1)
-		# 		x = top / bottom
-		# 		y = m1*x + c1
-		# 		point = np.array((x, y))
-		# 		#print(point)
-		# 		dist_to_end = math.dist(self.pos, temp_point)
-		# 		dist_to_point = math.dist(self.pos, point)
-		# 		#print(dist_to_end)
-		# 		#print(dist_to_point)
-		# 		#print("HELP")
-		# 		move_particle = dist_to_point/dist_to_end
-		# 		self.pos = point
-		# 		self.movement_ratio = 1 - move_particle
+	def use_intersection_to_set_pos_and_vel(self, next_pos, wall_length, wall):
+		gradient, constant = get_gradient_and_constant(self.pos, next_pos)
+		point = self.get_point_touching_wall(wall_length, wall, gradient, constant)
+		if point is not None:
+			self.update_movement_ratio(next_pos, point)
+			self.update_pos_and_vel_using_wall(wall, 0, point)
 
-		# 		wall_vector = (wall[1][0]-wall[0][0], wall[1][1]-wall[0][1])
-		# 		wall_normal = (-wall_vector[1], wall_vector[0])
-		# 		wall_normal_length = (wall_normal[0]**2 + wall_normal[1]**2)**0.5
-		# 		wall_unit_normal = np.array((wall_normal[0]/wall_normal_length, wall_normal[1]/wall_normal_length))
-		# 		new_velocity = -2*np.dot(self.vel, wall_unit_normal)*wall_unit_normal + self.vel
-		# 		self.vel = new_velocity
+	def get_point_touching_wall(self, w, wall, m1, c1):
+		# If top or bottom is zero this fails so at present is untreated for rapid objects.
+		top = (-self.rad*w) - (wall[0][0]*wall[1][1]) + (wall[0][1]*wall[1][0]) - (c1*wall[1][0]) + c1*wall[0][0]
+		bottom = (wall[1][0]*m1) - wall[1][1] + wall[0][1] - (wall[0][0]*m1)
+		if top != 0 and bottom != 0:
+			x = top / bottom
+			y = m1*x + c1
+			return np.array((x, y))
+
+	def update_movement_ratio(self, next_pos, point):
+		dist_to_end = math.dist(self.pos, next_pos)-self.rad
+		dist_to_point = math.dist(self.pos, point)
+		self.movement_ratio = (dist_to_end - dist_to_point)/dist_to_end
+
+	def remove_self_from(self, particles):
+		for i in range(len(particles)-1, -1, -1):
+			particle = particles[i]
+			if particle == self:
+				particles.pop(i)
+		return particles
+
+	def chemical_reaction(self, particle, deletion, products):
+		deletion.append(self)
+		deletion.append(particle)
+		self.reacted, particle.reacted = True, True
+		vx = np.random.uniform(-1, 1)*5 + self.vel[0]
+		vy = np.random.uniform(-1, 1)*5 + self.vel[1]
+		products.append(Product((self.pos[0], self.pos[1]), (vx,vy), self.rad+particle.rad))
+		return deletion, products
+
 
 class Fuel(Particle):
 	def __init__(self, pos, vel, rad):
@@ -109,33 +122,21 @@ class Fuel(Particle):
 
 	def update_particle_collision(self, particles):
 		products, deletion = [], []
+		# Can pop the reacted particle...
 		if not self.reacted:
 			for i in range(len(particles)-1, -1, -1):
 				particle = particles[i]
 				if particle == self:
 					particles.pop(i)
 				elif particle.type == "oxidizer" and self.check_collision(particle):
-					deletion.append(self)
-					deletion.append(particle)
-					self.reacted = True
-					particle.reacted = True
-					vx = np.random.uniform(0.5, 0.9)*5 + self.vel[0]
-					vy = np.random.uniform(-1.0, -0.8)*5 + self.vel[1]
-					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), self.rad+particle.rad))
+					deletion, products = self.chemical_reaction(particle, deletion, products)
+					particles.pop(i)
 				elif self.check_collision(particle):
 					self.separate_atom_to_edge(particle)
 					self.elastic_collision(self, particle)
 		else:
-			for i in range(len(particles)-1, -1, -1):
-				particle = particles[i]
-				if particle == self:
-					particles.pop(i)
+			particles = self.remove_self_from(particles)
 		return particles, products, deletion
-
-	def check_collision(self, particle):
-		if math.dist(self.pos, particle.pos) <= self.rad + particle.rad:
-			return True
-		return False
 
 
 class Ox(Particle):
@@ -152,22 +153,14 @@ class Ox(Particle):
 				particle = particles[i]
 				if particle == self:
 					particles.pop(i)
-				elif particle.type == "fuel":
-					deletion.append(self)
-					deletion.append(particle)
-					self.reacted = True
-					particle.reacted = True
-					vx = np.random.uniform(-1, 1)*5 + self.vel[0]
-					vy = np.random.uniform(-1, 1)*5 + self.vel[1]
-					products.append(Product((self.pos[0], self.pos[1]), (vx,vy), self.rad+particle.rad))
-				else:
+				elif particle.type == "fuel" and self.check_collision(particle):
+					deletion, products = self.chemical_reaction(particle, deletion, products)
+					particles.pop(i)
+				elif self.check_collision(particle):
 					self.separate_atom_to_edge(particle)
 					self.elastic_collision(self, particle)
 		else:
-			for i in range(len(particles)-1, -1, -1):
-				particle = particles[i]
-				if particle == self:
-					particles.pop(i)
+			particles = self.remove_self_from(particles)
 		return particles, products, deletion
 
 class Product(Particle):
@@ -181,7 +174,7 @@ class Product(Particle):
 			particle = particles[i]
 			if particle == self:
 				particles.pop(i)
-			else:
+			elif self.check_collision(particle):
 				self.separate_atom_to_edge(particle)
 				self.elastic_collision(self, particle)
 		return particles, [], []
