@@ -114,7 +114,7 @@ def main():
 				x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
 				y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
 				for p in particles_close_to_walls:
-					if ((x_min-p.rad<=p.pos[0]<=x_max+p.rad) and (y_min-p.rad<=p.pos[1]<=y_max+p.rad)):
+					if ((x_min-20<=p.pos[0]<=x_max+20) and (y_min-20<=p.pos[1]<=y_max+20)):
 						# At present the update wall doesn't perform continuous calc...
 						p.update_wall_collision(wall, dt)
 
