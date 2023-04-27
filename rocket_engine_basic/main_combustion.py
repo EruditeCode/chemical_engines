@@ -201,7 +201,7 @@ def main():
 
 		pg.display.set_caption(str(clock.get_fps()))
 		pg.display.update()
-		clock.tick(60)
+		clock.tick(20)
 
 def draw_text(screen, font_name, text, size, x, y, color):
 	font = pg.font.Font(font_name, size)
