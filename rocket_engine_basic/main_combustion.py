@@ -7,13 +7,13 @@ Link to Video:
 import pygame as pg
 import numpy as np
 from random import randint
-from combustion_boundary import barriers_open
+from combustion_boundary import barriers_moderate
 from class_Particle import Particle, Fuel, Ox, Product
 from support_functions import barriers_to_walls, sweep_and_prune
 
 # Reorganise the boundary data as walls.
 #walls_closed = barriers_to_walls(barriers_closed)
-walls_open = barriers_to_walls(barriers_open)
+walls_open = barriers_to_walls(barriers_moderate)
 
 def main():
 	pg.init()
@@ -22,15 +22,15 @@ def main():
 	clock = pg.time.Clock()
 	font_name = "LCD-U___.ttf"
 	
-	bg_open = pg.image.load('combustion_open.png')
+	bg_open = pg.image.load('combustion_moderate.png')
 	bg_open = pg.transform.scale(bg_open, (WIDTH, HEIGHT))
-	bg_closed = pg.image.load('combustion_open.png')
+	bg_closed = pg.image.load('combustion_moderate.png')
 	bg_closed = pg.transform.scale(bg_closed, (WIDTH, HEIGHT))
 
 	particles = []
 	momentum = 0
 
-	CHAMBER_TARGET = 300
+	CHAMBER_TARGET = 0
 	total_fuel = 0
 	wasted_fuel = 0
 	total_ox = 0
