@@ -1,7 +1,7 @@
 """
-A program to explore a basic rocket engine simulator with combustion.
+A program to explore a basic collision reaction model.
 
-Link to Video:
+Link to Video: https://youtu.be/BdC1E7WP3so
 """
 
 import pygame as pg
@@ -25,8 +25,6 @@ def main():
 				Fuel((45, 50), (1.9, 2.1), 40), Ox((550, 50), (-1.5, -4.1), 40),
 				Fuel((80, 500), (4.9, -0.6), 40), Ox((600, 200), (2.5, 3.1), 40),
 				]
-
-	# particles = [Fuel((100, 300), (0.001,-1), 40)]
 
 	# Flags and Settings
 	dt = 2

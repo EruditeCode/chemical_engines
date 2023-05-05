@@ -1,7 +1,7 @@
 """
 A program to explore a basic rocket engine simulator with combustion.
 
-Link to Video:
+Link to Video: https://youtu.be/BdC1E7WP3so
 """
 
 import pygame as pg
@@ -100,7 +100,6 @@ def main():
 						if particle == delete:
 							break
 					particles.pop(i)
-					#particles.remove(delete)
 
 			if new:
 				for product in new:
@@ -115,7 +114,6 @@ def main():
 				y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
 				for p in particles_close_to_walls:
 					if ((x_min-20<=p.pos[0]<=x_max+20) and (y_min-20<=p.pos[1]<=y_max+20)):
-						# At present the update wall doesn't perform continuous calc...
 						p.update_wall_collision(wall, dt)
 
 			# Update particle positions.
@@ -164,7 +162,7 @@ def main():
 
 		# Burn efficiency
 		if total_ox and total_fuel:
-			burn_eff = (1 - (wasted_fuel / total_fuel)) * 100
+			burn_eff = (1 - (wasted_ox / total_ox)) * 100
 		else:
 			burn_eff = 0
 

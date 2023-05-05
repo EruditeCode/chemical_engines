@@ -1,7 +1,7 @@
 """
 A program to explore a basic rocket engine simulator.
 
-Link to Video:
+Link to Video: https://youtu.be/BdC1E7WP3so
 """
 
 import pygame as pg
