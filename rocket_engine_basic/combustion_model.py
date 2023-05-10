@@ -70,12 +70,9 @@ def main():
 
 			sf.update_particle_positions(particles, dt)
 
-		# Displaying the background.
+		# Displaying objects to the screen.
 		screen.blit(bg, (0, 0))
-
-		# Displaying the particles.
-		for particle in particles:
-			pg.draw.circle(screen, particle.color, particle.pos, particle.rad)
+		sf.draw_particles(screen, particles)
 
 		pg.display.set_caption(str(clock.get_fps()))
 		pg.display.update()

@@ -68,6 +68,7 @@ def user_input_manager(flags):
 				flags['valve'] = not flags['valve']
 	return flags
 
+# ADD A TYPE TO THIS AND IF NONE just use PARTICLE...can make it more versatile...
 def create_particle(particles, x_m, y_m, pos_x, pos_y):
 	vx = np.random.uniform(x_m-0.2, x_m+0.2)
 	vy = np.random.uniform(y_m-0.1, y_m+0.1)
@@ -122,7 +123,7 @@ def draw_engine(screen, flags, bg_open, bg_closed):
 
 def draw_particles(screen, particles):
 	for particle in particles:
-		pg.draw.circle(screen, (240,240,20), particle.pos, particle.rad)
+		pg.draw.circle(screen, particle.color, particle.pos, particle.rad)
 
 def draw_text(screen, font_name, text, size, x, y, color):
 	font = pg.font.Font(font_name, size)
@@ -148,3 +149,55 @@ def draw_basic_UI(screen, font_name, flags, particles, momentum, CHAMBER_TARGET,
 	
 	draw_text(screen, font_name, "Exhaust", 20, 620, 470, (255,255,255))
 	draw_text(screen, font_name, f"Momentum: {int(momentum):0>5}", 20, 620, 500, (255,255,255))
+
+def combustion_user_input_manager(flags):
+	for event in pg.event.get():
+		if event.type == pg.QUIT:
+			pg.quit()
+			exit()
+		if event.type == pg.MOUSEBUTTONUP:
+			if event.button == 1:
+				flags['simulate'] = not flags['simulate']
+			if event.button == 3:
+				flags['pulse'] = not flags['pulse']
+		if event.type == pg.KEYUP:
+			if event.key == pg.K_f:
+				flags['fuel_primed'] = not flags['fuel_primed']
+			if event.key == pg.K_o:
+				flags['ox_primed'] = not flags['ox_primed']
+	return flags
+
+def calculated_burn_efficiency(total_ox, total_fuel, wasted_ox, wasted_fuel):
+	if total_ox and total_fuel:
+		if total_ox <= total_fuel:
+			return (1 - (wasted_ox / total_ox)) * 100
+		else:
+			return (1 - (wasted_fuel / total_fuel)) * 100
+	return 0
+
+def draw_combustion_UI(screen, font_name, flags, particles, burn_eff, momentum, CHAMBER_TARGET, num_particles_in_):
+	draw_text(screen, font_name, "Basic Rocket Engine", 40, 50, 50, (255,255,255))
+	draw_text(screen, font_name, f"Total Particles: {len(particles)}", 20, 50, 95, (240,240,20))
+	draw_text(screen, font_name, f"Combustion Efficiency: {burn_eff:0>3}", 20, 50, 120, (240,240,20))
+	
+	draw_text(screen, font_name, "Oxid", 20, 30, 210, (255,255,255))	
+	if flags["ox_primed"]:
+		draw_text(screen, font_name, "Primed", 20, 30, 240, (40, 240, 40))
+	else:
+		draw_text(screen, font_name, "Locked", 20, 30, 240, (240, 40, 40))
+
+	draw_text(screen, font_name, "Fuel", 20, 30, 350, (255,255,255))
+	if flags["fuel_primed"]:
+		draw_text(screen, font_name, "Primed", 20, 30, 380, (40, 240, 40))
+	else:
+		draw_text(screen, font_name, "Locked", 20, 30, 380, (240, 40, 40))
+
+	draw_text(screen, font_name, "Injectors", 20, 120, 470, (255,255,255))
+	draw_text(screen, font_name, f"{num_particles_in_['injector']:0>3}", 20, 120, 500, (240,240,20))
+	
+	draw_text(screen, font_name, "Chamber", 20, 340, 470, (255,255,255))
+	draw_text(screen, font_name, f"Target: {CHAMBER_TARGET}", 20, 340, 500, (240,240,20))
+	draw_text(screen, font_name, f"{num_particles_in_['chamber']:0>3}", 20, 340, 530, (240,240,20))
+	
+	draw_text(screen, font_name, "Exhaust", 20, 620, 470, (255,255,255))
+	draw_text(screen, font_name, f"Momentum: {int(momentum):0>5}", 20, 620, 500, (240,240,20))
