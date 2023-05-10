@@ -5,12 +5,11 @@ Link to Video: https://youtu.be/BdC1E7WP3so
 """
 
 import pygame as pg
+import support_functions as sf
 from class_Particle import Particle, Fuel, Ox, Product
-from support_functions import barriers_to_walls, sweep_and_prune
 
 # Reorganise the boundary data as walls.
-barriers = [[(0,0), (900,0), (900, 600), (0,600)]]
-walls_open = barriers_to_walls(barriers)
+walls = sf.barriers_to_walls([[(0,0), (900,0), (900, 600), (0,600)]])
 
 def main():
 	pg.init()
@@ -41,7 +40,7 @@ def main():
 		if simulate and particles:
 			# Sweep and prune algorithm to manage collision between particles.
 			particles.sort(key=lambda x: x.pos[0], reverse=False)
-			collision_set = sweep_and_prune(particles)
+			collision_set = sf.sweep_and_prune(particles)
 			deletable, new = [], []
 			for collision_group in collision_set:
 				while len(collision_group) > 1:
@@ -60,8 +59,6 @@ def main():
 				for product in new:
 					particles.append(product)
 
-			# Select walls dependent on valve status.
-			walls = walls_open
 			# Ignore particles that are not close to a wall.
 			particles_close_to_walls = [p for p in particles if ((210>p.pos[0] or p.pos[0]>540) or (220>p.pos[1] or p.pos[1]>375))]
 			for wall in walls:
@@ -71,9 +68,7 @@ def main():
 					if ((x_min-p.rad*2<=p.pos[0]<=x_max+p.rad*2) and (y_min-p.rad*2<=p.pos[1]<=y_max+p.rad*2)):
 						p.update_wall_collision(wall, dt)
 
-			# Update particle positions.
-			for atom in particles:
-				atom.update_pos(dt)
+			sf.update_particle_positions(particles, dt)
 
 		# Displaying the background.
 		screen.blit(bg, (0, 0))
