@@ -2,18 +2,20 @@
 A program to explore a basic rocket engine simulator.
 
 Link to Video: https://youtu.be/BdC1E7WP3so
+
+Notes:
+This file has been formatted to remove most functional detail
+to the support_functions file (imported as sf). This is to give
+clarity to the main file and avoid clutter.
 """
 
 import pygame as pg
-import numpy as np
-from random import randint
+import support_functions as sf
 from basic_1_boundary import barriers_open, barriers_closed
-from class_Particle import Particle
-from support_functions import barriers_to_walls, sweep_and_prune
 
 # Reorganise the boundary data as walls.
-walls_closed = barriers_to_walls(barriers_closed)
-walls_open = barriers_to_walls(barriers_open)
+walls_closed = sf.barriers_to_walls(barriers_closed)
+walls_open = sf.barriers_to_walls(barriers_open)
 
 def main():
 	pg.init()
@@ -27,134 +29,52 @@ def main():
 	bg_closed = pg.image.load('basic_1_closed.png')
 	bg_closed = pg.transform.scale(bg_closed, (WIDTH, HEIGHT))
 
+	# Variables and Flags
+	flags = {"simulate":False, "pulse":False, "valve":True}
 	particles = []
-	momentum = 0
-
-	CHAMBER_TARGET = 300
-
-	# Flags and Settings
-	dt = 0.5
-	simulate, pulse, valve = False, False, True
 	pulse_count = 0
+	momentum = 0
 	average_exhaust = False
+
+	# Settings
+	dt = 0.5
+	CHAMBER_TARGET = 100
+
 	while True:
-		for event in pg.event.get():
-			if event.type == pg.QUIT:
-				pg.quit()
-				exit()
-			if event.type == pg.MOUSEBUTTONUP:
-				print(pg.mouse.get_pos())
-				if event.button == 1:
-					simulate = not simulate
-				if event.button == 3:
-					pulse = not pulse
-			if event.type == pg.KEYUP:
-				if event.key == pg.K_v:
-					valve = not valve 
+		flags = sf.user_input_manager(flags)
 
-		if pulse:
-			simulate = True
-			if pulse_count % 2 == 0:
-				vx = np.random.uniform(0.5, 0.9)
-				vy = np.random.uniform(-1.0, -0.8)
-				x, y = 152, randint(405, 425)
-				particles.append(Particle((x, y), (vx,vy), 1))
-			pulse_count += 1
-
-			if pulse_count == 80:
-				pulse = False
+		# Check the pulse status and add additional particles if required.
+		if flags['pulse']:
+			flags['simulate'] = True
+			if pulse_count < 40:
+				particles = sf.create_particle(particles, 0.7, -0.9, 152, 415)
+				pulse_count += 1
+			else:
+				flags['pulse'] = False
 				pulse_count = 0
 
-		if simulate and particles:
-			# Sweep and prune algorithm to manage collision between particles.
+		# Check the simulate flag and if there are particles update them.
+		if flags['simulate'] and particles:
 			particles.sort(key=lambda x: x.pos[0], reverse=False)
-			collision_set = sweep_and_prune(particles)
-			for collision_group in collision_set:
-				while len(collision_group) > 1:
-					collision_group = collision_group[0].update_particle_collision(collision_group)
+			walls = walls_open if flags['valve'] else walls_closed
+			sf.collision_manager(particles, walls, dt)
+			sf.update_particle_positions(particles, dt)
+			particles, momentum = sf.remove_particles_out_of_bounds(particles, momentum)
 
-			# Select walls dependent on valve status.
-			walls = walls_open if valve else walls_closed
-			# Ignore particles that are not close to a wall.
-			particles_close_to_walls = [p for p in particles if ((210>p.pos[0] or p.pos[0]>540) or (220>p.pos[1] or p.pos[1]>375))]
-			for wall in walls:
-				x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
-				y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
-				for p in particles_close_to_walls:
-					if ((x_min-p.rad<=p.pos[0]<=x_max+p.rad) and (y_min-p.rad<=p.pos[1]<=y_max+p.rad)):
-						# At present the update wall doesn't perform continuous calc...
-						p.update_wall_collision(wall, dt)
+		# Find number of particles in parts of the engine and update flags.			
+		num_particles_in_ = sf.count_particles_in_engine_parts(particles)
+		flags['pulse'] = sf.update_pulse_status(num_particles_in_, CHAMBER_TARGET, flags)
+		flags['valve'] = sf.update_valve_status(num_particles_in_['injector'], 0)
 
-			# Update particle positions.
-			for atom in particles:
-				atom.update_pos(dt)
-
-			for i in range(len(particles)-1, -1, -1):
-				if particles[i].pos[0] > 760:
-					momentum += particles[i].vel[0]*particles[i].rad
-					particles.pop(i)
-				elif (particles[i].pos[1] > 500 or particles[i].pos[1] < 100):
-					particles.pop(i)
-					print("OOPS")
-
-		# Displaying the engine.
-		if valve:
-			screen.blit(bg_open, (0, 0))
-		else:
-			screen.blit(bg_closed, (0, 0))
-
-		# Displaying the particles.
-		for particle in particles:
-			pg.draw.circle(screen, (240,240,20), particle.pos, particle.rad)
-
-		# Calculating values for text section.
-		number_in_injector = 0
-		number_in_chamber = 0
-		number_in_exhaust = 0
-		for particle in particles:
-			if particle.pos[0] <= 198:
-				number_in_injector += 1
-			elif 198 < particle.pos[0] <= 587:
-				number_in_chamber += 1
-
-		if number_in_chamber + number_in_injector <= CHAMBER_TARGET-30 and not pulse:
-			pulse = True
-		
-		if number_in_injector == 0:
-			valve = False
-		else:
-			valve = True
-
-
-		# Displaying information.
-		draw_text(screen, font_name, "Basic Rocket Engine", 40, 50, 50, (255,255,255))
-		draw_text(screen, font_name, f"Total Particles: {len(particles)}", 20, 50, 95, (240,240,20))
-		draw_text(screen, font_name, f"Chamber Target: {CHAMBER_TARGET}", 20, 50, 125, (240,240,20))
-		
-		draw_text(screen, font_name, "Injector", 20, 120, 470, (255,255,255))
-		if valve:
-			draw_text(screen, font_name, "Open", 20, 120, 500, (40, 240, 40))
-		else:
-			draw_text(screen, font_name, "Closed", 20, 120, 500, (240, 40, 40))
-		draw_text(screen, font_name, f"{number_in_injector:0>3}", 20, 120, 530, (240,240,20))
-		
-		draw_text(screen, font_name, "Chamber", 20, 340, 470, (255,255,255))
-		draw_text(screen, font_name, f"{number_in_chamber:0>3}", 20, 340, 500, (240,240,20))
-		
-		draw_text(screen, font_name, "Exhaust", 20, 620, 470, (255,255,255))
-		draw_text(screen, font_name, f"Momentum: {int(momentum):0>5}", 20, 620, 500, (255,255,255))
-	
+		# Displaying objects to the screen.
+		sf.draw_engine(screen, flags, bg_open, bg_closed)
+		sf.draw_particles(screen, particles)
+		sf.draw_basic_UI(screen, font_name, flags, particles, momentum, CHAMBER_TARGET, num_particles_in_)
 
 		pg.display.set_caption(str(clock.get_fps()))
 		pg.display.update()
 		clock.tick(20)
 
-def draw_text(screen, font_name, text, size, x, y, color):
-	font = pg.font.Font(font_name, size)
-	text_surface = font.render(text, True, color)
-	text_rect = text_surface.get_rect()
-	text_rect.topleft = (x, y)
-	screen.blit(text_surface, text_rect)
 
 if __name__ == "__main__":
 	main()

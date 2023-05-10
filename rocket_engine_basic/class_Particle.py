@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from support_functions import get_unit_vector, get_vector_unit_normal, get_gradient_and_constant, intersect
+from matrix_and_line_functions import get_unit_vector, get_vector_unit_normal, get_gradient_and_constant, intersect
 
 class Particle:
 	def __init__(self, pos, vel, rad):
