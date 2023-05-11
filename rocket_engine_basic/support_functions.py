@@ -167,6 +167,37 @@ def combustion_user_input_manager(flags):
 				flags['ox_primed'] = not flags['ox_primed']
 	return flags
 
+def combustion_collision_manager(particles, walls, dt):
+	# Sweep and prune algorithm to manage collision between particles.
+	collision_set = sweep_and_prune(particles)
+	deletable, new = [], []
+	for collision_group in collision_set:
+		while len(collision_group) > 1:
+			collision_group, products, delete = collision_group[0].update_particle_collision(collision_group)
+			deletable.extend(delete)
+			new.extend(products)
+
+	if deletable: 
+		for delete in deletable:
+			for i, particle in enumerate(particles):
+				if particle == delete:
+					break
+			particles.pop(i)
+
+	if new:
+		for product in new:
+			particles.append(product)
+
+	# Ignore particles that are not close to a wall.
+	particles_close_to_walls = [p for p in particles if ((210>p.pos[0] or p.pos[0]>540) or (220>p.pos[1] or p.pos[1]>375))]
+	for wall in walls:
+		x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
+		y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
+		for p in particles_close_to_walls:
+			if ((x_min-p.rad*2<=p.pos[0]<=x_max+p.rad*2) and (y_min-p.rad*2<=p.pos[1]<=y_max+p.rad*2)):
+				p.update_wall_collision(wall, dt)
+	return particles
+
 def calculated_burn_efficiency(total_ox, total_fuel, wasted_ox, wasted_fuel):
 	if total_ox and total_fuel:
 		if total_ox <= total_fuel:

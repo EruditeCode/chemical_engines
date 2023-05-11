@@ -20,7 +20,8 @@ def main():
 	bg = pg.Surface((WIDTH, HEIGHT))
 	bg.fill((20,20,20))
 
-	particles = [Fuel((100, 300), (2.9, -3.1), 40), Ox((500, 400), (-2.5, 4.1), 40),
+	particles = [
+				Fuel((100, 300), (2.9, -3.1), 40), Ox((500, 400), (-2.5, 4.1), 40),
 				Fuel((45, 50), (1.9, 2.1), 40), Ox((550, 50), (-1.5, -4.1), 40),
 				Fuel((80, 500), (4.9, -0.6), 40), Ox((600, 200), (2.5, 3.1), 40),
 				]
@@ -38,36 +39,8 @@ def main():
 					simulate = not simulate
 
 		if simulate and particles:
-			# Sweep and prune algorithm to manage collision between particles.
 			particles.sort(key=lambda x: x.pos[0], reverse=False)
-			collision_set = sf.sweep_and_prune(particles)
-			deletable, new = [], []
-			for collision_group in collision_set:
-				while len(collision_group) > 1:
-					collision_group, products, delete = collision_group[0].update_particle_collision(collision_group)
-					deletable.extend(delete)
-					new.extend(products)
-
-			if deletable: 
-				for delete in deletable:
-					for i, particle in enumerate(particles):
-						if particle == delete:
-							break
-					particles.pop(i)
-
-			if new:
-				for product in new:
-					particles.append(product)
-
-			# Ignore particles that are not close to a wall.
-			particles_close_to_walls = [p for p in particles if ((210>p.pos[0] or p.pos[0]>540) or (220>p.pos[1] or p.pos[1]>375))]
-			for wall in walls:
-				x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
-				y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
-				for p in particles_close_to_walls:
-					if ((x_min-p.rad*2<=p.pos[0]<=x_max+p.rad*2) and (y_min-p.rad*2<=p.pos[1]<=y_max+p.rad*2)):
-						p.update_wall_collision(wall, dt)
-
+			particles = sf.combustion_collision_manager(particles, walls, dt)
 			sf.update_particle_positions(particles, dt)
 
 		# Displaying objects to the screen.
