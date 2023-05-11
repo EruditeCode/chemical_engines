@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from random import randint
-from class_Particle import Particle
+from class_Particle import Particle, Fuel, Ox
 
 def barriers_to_walls(barriers):
 	walls = []
@@ -68,12 +68,16 @@ def user_input_manager(flags):
 				flags['valve'] = not flags['valve']
 	return flags
 
-# ADD A TYPE TO THIS AND IF NONE just use PARTICLE...can make it more versatile...
-def create_particle(particles, x_m, y_m, pos_x, pos_y):
+def create_particle(particles, x_m, y_m, pos_x, pos_y, p_type=None):
 	vx = np.random.uniform(x_m-0.2, x_m+0.2)
 	vy = np.random.uniform(y_m-0.1, y_m+0.1)
-	x, y = 152, randint(pos_y-10, pos_y+10)
-	particles.append(Particle((x, y), (vx,vy), 1))
+	x, y = 152, randint(pos_y-7, pos_y+7)
+	if p_type == "Fuel":
+		particles.append(Fuel((x, y), (vx,vy), 1))
+	elif p_type == "Ox":
+		particles.append(Ox((x, y), (vx,vy), 1))
+	else:
+		particles.append(Particle((x, y), (vx,vy), 1))
 	return particles
 
 def collision_manager(particles, walls, dt):
@@ -167,7 +171,7 @@ def combustion_user_input_manager(flags):
 				flags['ox_primed'] = not flags['ox_primed']
 	return flags
 
-def combustion_collision_manager(particles, walls, dt):
+def combustion_collision_manager(particles, walls, dt, wide_check=False):
 	# Sweep and prune algorithm to manage collision between particles.
 	collision_set = sweep_and_prune(particles)
 	deletable, new = [], []
@@ -194,9 +198,26 @@ def combustion_collision_manager(particles, walls, dt):
 		x_min, x_max = min([wall[0][0], wall[1][0]]), max([wall[0][0], wall[1][0]])
 		y_min, y_max = min([wall[0][1], wall[1][1]]), max([wall[0][1], wall[1][1]])
 		for p in particles_close_to_walls:
-			if ((x_min-p.rad*2<=p.pos[0]<=x_max+p.rad*2) and (y_min-p.rad*2<=p.pos[1]<=y_max+p.rad*2)):
-				p.update_wall_collision(wall, dt)
+			if wide_check:
+				if ((x_min-20<=p.pos[0]<=x_max+20) and (y_min-20<=p.pos[1]<=y_max+20)):
+					p.update_wall_collision(wall, dt)
+			else:
+				if ((x_min-p.rad*2<=p.pos[0]<=x_max+p.rad*2) and (y_min-p.rad*2<=p.pos[1]<=y_max+p.rad*2)):
+					p.update_wall_collision(wall, dt)
 	return particles
+
+def combustion_remove_out_of_bounds(particles, momentum, wasted_fuel, wasted_ox):
+	for i in range(len(particles)-1, -1, -1):
+		if particles[i].pos[0] > 760:
+			momentum += particles[i].vel[0]*particles[i].rad
+			if particles[i].type == "fuel":
+				wasted_fuel += 1
+			elif particles[i].type == "oxidizer":
+				wasted_ox += 1
+			particles.pop(i)
+		elif (particles[i].pos[1] > 500 or particles[i].pos[1] < 100):
+			particles.pop(i)
+	return particles, momentum, wasted_fuel, wasted_ox
 
 def calculated_burn_efficiency(total_ox, total_fuel, wasted_ox, wasted_fuel):
 	if total_ox and total_fuel:

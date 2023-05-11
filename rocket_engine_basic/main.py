@@ -55,6 +55,7 @@ def main():
 
 		# Check the simulate flag and if there are particles update them.
 		if flags['simulate'] and particles:
+			# Sweep and prune algorithm to manage collision between particles.
 			particles.sort(key=lambda x: x.pos[0], reverse=False)
 			walls = walls_open if flags['valve'] else walls_closed
 			sf.collision_manager(particles, walls, dt)
